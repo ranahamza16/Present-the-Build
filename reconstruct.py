@@ -31,14 +31,14 @@ sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="repla
 # ===========================================================================
 # Paths
 # ===========================================================================
-PROJECT_ROOT = r"C:\Users\DELL\OneDrive\Desktop\Derawar Fort"
+PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
 IMAGES_DIR   = os.path.join(PROJECT_ROOT, "images")
 IMAGES_RESIZED_DIR = os.path.join(PROJECT_ROOT, "images_resized")
 DB_PATH      = os.path.join(PROJECT_ROOT, "colmap.db")
 SPARSE_DIR   = os.path.join(PROJECT_ROOT, "sparse")
 OUTPUT_DIR   = os.path.join(PROJECT_ROOT, "output")
 PLY_PATH     = os.path.join(OUTPUT_DIR, "derawar_fort_reconstruction.ply")
-COLMAP_EXE   = r"C:\Users\DELL\Downloads\colmap-x64-windows-nocuda\bin\colmap.exe"
+COLMAP_EXE   = os.environ.get("COLMAP_EXE", "colmap")
 
 # ===========================================================================
 # Curated image list
