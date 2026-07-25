@@ -184,14 +184,34 @@ def run(cmd, label):
     return elapsed
 
 
+import socket
+import urllib.parse
+import ssl
+
+ssl._create_default_https_context = ssl._create_unverified_context
+
 def download_with_retry(url, dest_path, max_retries=5):
     """Download a URL to dest_path with exponential backoff retry on 429/5xx."""
     headers = {
         "User-Agent": "DerawarFort-3D-Pipeline/1.0 (heritage-preservation-research) Python/urllib"
     }
+    
+    parsed_url = urllib.parse.urlparse(url)
+    hostname = parsed_url.hostname
+    
+    try:
+        ip = socket.gethostbyname(hostname)
+        print(f"      [DNS] Resolved {hostname} to {ip} via normal DNS")
+    except Exception:
+        ip = resolve_via_doh(hostname)
+        print(f"      [DNS] Resolved {hostname} to {ip} via DoH fallback")
+        
+    new_url = parsed_url._replace(netloc=ip).geturl()
+    headers["Host"] = hostname
+    
     for attempt in range(1, max_retries + 1):
         try:
-            req = urllib.request.Request(url, headers=headers)
+            req = urllib.request.Request(new_url, headers=headers)
             with urllib.request.urlopen(req, timeout=120) as resp, open(dest_path, "wb") as f:
                 shutil.copyfileobj(resp, f)
             return True
