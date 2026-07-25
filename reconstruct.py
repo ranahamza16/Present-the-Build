@@ -23,6 +23,18 @@ import struct
 import urllib.request
 import urllib.error
 import shutil
+import json
+
+def resolve_via_doh(hostname):
+    """Resolve hostname using Cloudflare DNS over HTTPS."""
+    url = f"https://1.1.1.1/dns-query?name={hostname}&type=A"
+    req = urllib.request.Request(url, headers={"Accept": "application/dns-json"})
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+        for answer in data.get("Answer", []):
+            if answer.get("type") == 1:  # A record
+                return answer.get("data")
+    raise ValueError(f"Could not resolve {hostname} via DoH")
 
 # Force UTF-8 output on Windows terminals
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
