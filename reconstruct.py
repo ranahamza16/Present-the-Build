@@ -24,6 +24,8 @@ import urllib.request
 import urllib.error
 import shutil
 import json
+import subprocess
+import re
 
 def resolve_via_doh(hostname):
     """Resolve hostname using Cloudflare DNS over HTTPS."""
@@ -449,9 +451,28 @@ def main():
     num_registered = count_registered_images(best_model)
     num_points     = count_3d_points(best_model)
 
+def check_mtl(sparse_path):
+    result = subprocess.run(
+        ['colmap', 'model_analyzer', '--path', sparse_path],
+        capture_output=True,
+        text=True
+    )
+    output = result.stdout + result.stderr
+    match = re.search(r'Mean track length:\s*([\d.]+)', output)
+    if not match:
+        print('[MTL CHECK] Could not find Mean Track Length in output.')
+        return None
+    mtl = float(match.group(1))
+    if 3.60 <= mtl <= 4.20:
+        print(f'[MTL CHECK] PASS — Mean Track Length = {mtl} (within 3.60-4.20 threshold)')
+    else:
+        print(f'[MTL CHECK] WARN — Mean Track Length = {mtl} (outside 3.60-4.20 threshold, per RESEARCH.md)')
+    return mtl
+
     # -----------------------------------------------------------------------
     # STEP 5: Export to PLY
     # -----------------------------------------------------------------------
+    check_mtl(best_model)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     run([
         COLMAP_EXE, "model_converter",
