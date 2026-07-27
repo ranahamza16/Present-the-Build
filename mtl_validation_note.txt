@@ -1,0 +1,1 @@
+Before this, I had to manually run colmap model_analyzer and remember the 3.60-4.20 threshold myself. Now reconstruct.py checks this automatically. My actual MTL came out at 2.13333, which means WARN — I may need more images.
