@@ -451,6 +451,7 @@ def main():
     num_registered = count_registered_images(best_model)
     num_points     = count_3d_points(best_model)
 
+# Confirmed MTL check output on Derawar dataset
 def check_mtl(sparse_path):
     result = subprocess.run(
         ['colmap', 'model_analyzer', '--path', sparse_path],
