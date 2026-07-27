@@ -14,7 +14,8 @@ The steps performed automatically by the pipeline include:
 3. **Feature Extraction:** Extracts SIFT features from the images (CPU-only support built-in).
 4. **Exhaustive Matching:** Matches the extracted features across all image pairs.
 5. **Sparse Reconstruction (Mapping):** Reconstructs the 3D scene (camera poses and 3D points).
-6. **Exporting:** Converts the generated sparse model into a standard `.ply` file format for viewing.
+6. **Quality Validation:** Automatically checks the Mean Track Length (MTL) to evaluate the reconstruction quality against the 3.60-4.20 threshold.
+7. **Exporting:** Converts the generated sparse model into a standard `.ply` file format for viewing.
 
 ## 🛠️ Prerequisites
 
