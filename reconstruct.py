@@ -66,7 +66,7 @@ COLMAP_EXE   = os.environ.get("COLMAP_EXE", "colmap")
 # The exact hash-path thumbnail URLs come directly from the API response.
 
 IMAGES = [
-    # --- Eastern wall (same photographer session: pageid 72377xxx) ---
+    # These images capture the eastern wall, taken during the same photography session.
     {
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Eastern_side_-_Derawar_Fort.jpg/1280px-Eastern_side_-_Derawar_Fort.jpg",
         "filename": "01_eastern_side.jpg",
@@ -79,7 +79,7 @@ IMAGES = [
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/North_wall_-_Derawar_Fort.jpg/1280px-North_wall_-_Derawar_Fort.jpg",
         "filename": "03_north_wall.jpg",
     },
-    # --- Outer perimeter bastions (Bahawalpur I & II -- same session) ---
+    # These images capture the outer perimeter bastions, specifically Bahawalpur I and II.
     {
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Derawar_Fort%2C_Bahawalpur_I.jpg/1280px-Derawar_Fort%2C_Bahawalpur_I.jpg",
         "filename": "04_bahawalpur_I.jpg",
@@ -88,7 +88,7 @@ IMAGES = [
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Derawar_Fort%2C_Bahawalpur_II.jpg/1280px-Derawar_Fort%2C_Bahawalpur_II.jpg",
         "filename": "05_bahawalpur_II.jpg",
     },
-    # --- Outer wall shots ---
+    # These are general shots of the outer defensive wall.
     {
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Derawar_Fort_outer_view.jpg/1280px-Derawar_Fort_outer_view.jpg",
         "filename": "06_outer_view.jpg",
@@ -97,7 +97,7 @@ IMAGES = [
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Defense_wall_of_Nawab%27s_Fort_-_Derawar_Fort.jpg/1280px-Defense_wall_of_Nawab%27s_Fort_-_Derawar_Fort.jpg",
         "filename": "07_defense_wall.jpg",
     },
-    # --- Entrance gate ---
+    # These images focus on the main entrance gate.
     {
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Derawar_Entrance_Gate.jpg/1280px-Derawar_Entrance_Gate.jpg",
         "filename": "08_entrance_gate.jpg",
@@ -106,7 +106,7 @@ IMAGES = [
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Derawar_Fort_View.jpg/1280px-Derawar_Fort_View.jpg",
         "filename": "09_fort_view.jpg",
     },
-    # --- Exterior medium/wide shots ---
+    # These are exterior medium and wide-angle shots to provide broader context.
     {
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Derawar_Fort_2.jpg/1280px-Derawar_Fort_2.jpg",
         "filename": "10_fort_2.jpg",
@@ -119,7 +119,7 @@ IMAGES = [
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Derawar_Fort_side_view.jpg/1280px-Derawar_Fort_side_view.jpg",
         "filename": "12_side_view.jpg",
     },
-    # --- Small originals (no thumbnail larger than original) ---
+    # These are original images where no higher resolution thumbnail is available.
     {
         "url":      "https://upload.wikimedia.org/wikipedia/commons/b/ba/Mighty_derawar_fort.jpg",
         "filename": "13_mighty_derawar.jpg",
@@ -144,7 +144,7 @@ IMAGES = [
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/View_of_Derawar_Fort_from_East.jpg/1280px-View_of_Derawar_Fort_from_East.jpg",
         "filename": "18_view_from_east.jpg",
     },
-    # --- Extra shot: different perspective ---
+    # This is an additional shot offering a different perspective of the fort.
     {
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Derawar_Fort_by_M_Ali_Mir_01.jpg/1280px-Derawar_Fort_by_M_Ali_Mir_01.jpg",
         "filename": "19_m_ali_mir.jpg",
@@ -269,7 +269,7 @@ def download_images(dest_dir, images, inter_request_delay=5.0):
             if os.path.exists(local_path):
                 os.remove(local_path)
 
-        # Polite delay between requests (5s default)
+        # We introduce a polite delay between download requests (defaulting to 5 seconds) to avoid rate-limiting.
         if i < len(images) - 1:
             time.sleep(inter_request_delay)
 
@@ -399,15 +399,15 @@ def main():
         "--database_path",                  DB_PATH,
         "--image_path",                     IMAGES_RESIZED_DIR,
         "--FeatureExtraction.use_gpu",      "0",
-        # Limit to 2 threads: 12-thread default OOMs on large CPU SIFT jobs
+        # We limit the feature extraction to 2 threads because the default 12-thread execution causes out-of-memory errors on large CPU SIFT jobs.
         "--FeatureExtraction.num_threads",  "2",
-        # Cap longest dimension to 3200px to reduce per-thread RAM usage
+        # We cap the longest image dimension to 3200 pixels to reduce per-thread RAM usage during processing.
         "--FeatureExtraction.max_image_size",  "3200",
     ], "STEP 2 -- Feature extraction (CPU-only SIFT)")
 
     # -----------------------------------------------------------------------
     # STEP 3: Exhaustive matching (CPU-only)
-    # COLMAP 4.1.0 has no --SiftMatching.max_distance; omitted.
+    # Note that the --SiftMatching.max_distance parameter is omitted because COLMAP version 4.1.0 does not support it.
     # -----------------------------------------------------------------------
     run([
         COLMAP_EXE, "exhaustive_matcher",
@@ -429,13 +429,13 @@ def main():
         "--Mapper.init_min_num_inliers",     "30",
         "--Mapper.abs_pose_min_num_inliers", "6",
         "--Mapper.abs_pose_min_inlier_ratio", "0.1",
-        # Relax initial triangulation angle threshold (default is 16.0 degrees)
+        # We relax the initial triangulation angle threshold from the default of 16.0 degrees to 2.0 degrees.
         "--Mapper.init_min_tri_angle",       "2.0",
         "--Mapper.filter_max_reproj_error",   "8",
         "--Mapper.min_model_size",           "3",
     ], "STEP 4 -- Sparse reconstruction (mapper)")
 
-    # Find the best (most images registered) sub-model
+    # We search for and select the best sparse sub-model, which is the one with the highest number of registered images.
     sub_models = sorted(
         [d for d in os.listdir(SPARSE_DIR)
          if os.path.isdir(os.path.join(SPARSE_DIR, d))],
@@ -451,7 +451,7 @@ def main():
     num_registered = count_registered_images(best_model)
     num_points     = count_3d_points(best_model)
 
-# Confirmed MTL check output on Derawar dataset
+# This function parses and checks the Mean Track Length (MTL) from the model analyzer output.
 def check_mtl(sparse_path):
     result = subprocess.run(
         ['colmap', 'model_analyzer', '--path', sparse_path],
@@ -459,7 +459,7 @@ def check_mtl(sparse_path):
         text=True
     )
     output = result.stdout + result.stderr
-    # Verified against colmap 3.6/3.7 output: "Mean track length: 2.211111"
+    # This regex has been verified against the standard COLMAP 3.6/3.7 output format for Mean Track Length.
     match = re.search(r'Mean track length:\s*([\d.]+)', output)
     if not match:
         print('[MTL CHECK] Could not find Mean Track Length in output.')
