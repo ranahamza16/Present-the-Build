@@ -213,6 +213,7 @@ def download_with_retry(url, dest_path, max_retries=5):
         try:
             req = urllib.request.Request(url, headers=headers)
             try:
+                print("      [DNS] Using normal DNS for request")
                 with urllib.request.urlopen(req, timeout=120) as resp, open(dest_path, "wb") as f:
                     shutil.copyfileobj(resp, f)
                 return True
