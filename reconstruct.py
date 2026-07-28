@@ -459,6 +459,7 @@ def check_mtl(sparse_path):
         text=True
     )
     output = result.stdout + result.stderr
+    # Verified against colmap 3.6/3.7 output: "Mean track length: 2.211111"
     match = re.search(r'Mean track length:\s*([\d.]+)', output)
     if not match:
         print('[MTL CHECK] Could not find Mean Track Length in output.')
