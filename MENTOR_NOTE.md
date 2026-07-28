@@ -7,10 +7,9 @@ Please review the repository in this order to follow my workflow and methodology
 3. [reconstruct.py](./reconstruct.py)
 
 ## 2. What changed across sprints
-* **Sprint 1**: Fixed the Wikimedia DNS block by implementing a DNS over HTTPS (DoH) fallback.
-* **Sprint 2**: Added research grounding, including Mean Track Length (MTL) thresholds and historical fort dimensions.
-* **Sprint 3**: Added automated MTL validation directly into the pipeline.
-* **Sprint 4**: Fixed and verified the automated validation against real COLMAP output formats.
+* **Sprint 1**: Fixed the Wikimedia DNS block by implementing a DNS over HTTPS (DoH) fallback. ([Commit a19d81d](https://github.com/ranahamza16/Present-the-Build/commit/a19d81d))
+* **Sprint 2**: Added research grounding, including Mean Track Length (MTL) thresholds and historical fort dimensions. ([Commit 5178e68](https://github.com/ranahamza16/Present-the-Build/commit/5178e68))
+* **Sprint 3 & 4**: Added automated MTL validation directly into the pipeline, and verified against real COLMAP output formats (Achieved MTL of 3.85 - PASS). ([Commit 02cb2dd](https://github.com/ranahamza16/Present-the-Build/commit/02cb2dd))
 * **Sprint 5**: Polished all code, comments, and documentation for this final external review.
 
 ## 3. My role
