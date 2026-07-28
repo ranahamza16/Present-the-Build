@@ -25,6 +25,7 @@ import urllib.error
 import shutil
 import json
 import socket
+import re
 import urllib.request as _urlreq
 
 def resolve_via_doh(hostname):
@@ -39,6 +40,21 @@ def resolve_via_doh(hostname):
         raise RuntimeError(f"DoH resolution failed for {hostname}")
     print(f"[DoH] Resolved {hostname} -> {ips[0]}")
     return ips[0]
+
+def check_mtl(sparse_path):
+    result = subprocess.run(
+        [COLMAP_EXE, "model_analyzer", "--path", sparse_path],
+        capture_output=True, text=True
+    )
+    output = result.stdout + result.stderr
+    match = re.search(r"Mean track length:\s*([\d.]+)", output)
+    if not match:
+        print(f"[MTL CHECK] Could not find Mean Track Length in output:\n{output}")
+        return None
+    mtl = float(match.group(1))
+    status = "PASS" if 3.60 <= mtl <= 4.20 else "WARN"
+    print(f"[MTL CHECK] {status} — Mean Track Length = {mtl} (threshold 3.60-4.20)")
+    return mtl
 
 # Force UTF-8 output on Windows terminals
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
@@ -443,6 +459,9 @@ def main():
         sys.exit(1)
     best_model = os.path.join(SPARSE_DIR, sub_models[0])
     print("\n  -> Using sub-model: " + best_model)
+    
+    print("\n  -> Running MTL Validation on best sub-model:")
+    check_mtl(best_model)
 
     num_registered = count_registered_images(best_model)
     num_points     = count_3d_points(best_model)
