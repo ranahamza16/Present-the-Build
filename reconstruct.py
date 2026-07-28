@@ -24,19 +24,21 @@ import urllib.request
 import urllib.error
 import shutil
 import json
-import subprocess
-import re
+import socket
+import urllib.request as _urlreq
 
 def resolve_via_doh(hostname):
-    """Resolve hostname using Cloudflare DNS over HTTPS."""
+    """Resolve hostname via Cloudflare DNS-over-HTTPS, bypassing local ISP DNS blocks."""
     url = f"https://1.1.1.1/dns-query?name={hostname}&type=A"
-    req = urllib.request.Request(url, headers={"Accept": "application/dns-json"})
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
-        for answer in data.get("Answer", []):
-            if answer.get("type") == 1:  # A record
-                return answer.get("data")
-    raise ValueError(f"Could not resolve {hostname} via DoH")
+    req = _urlreq.Request(url, headers={"Accept": "application/dns-json"})
+    with _urlreq.urlopen(req, timeout=10) as resp:
+        data = json.loads(resp.read().decode())
+    answers = data.get("Answer", [])
+    ips = [a["data"] for a in answers if a.get("type") == 1]
+    if not ips:
+        raise RuntimeError(f"DoH resolution failed for {hostname}")
+    print(f"[DoH] Resolved {hostname} -> {ips[0]}")
+    return ips[0]
 
 # Force UTF-8 output on Windows terminals
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
@@ -66,7 +68,7 @@ COLMAP_EXE   = os.environ.get("COLMAP_EXE", "colmap")
 # The exact hash-path thumbnail URLs come directly from the API response.
 
 IMAGES = [
-    # These images capture the eastern wall, taken during the same photography session.
+    # --- Eastern wall (same photographer session: pageid 72377xxx) ---
     {
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Eastern_side_-_Derawar_Fort.jpg/1280px-Eastern_side_-_Derawar_Fort.jpg",
         "filename": "01_eastern_side.jpg",
@@ -79,7 +81,7 @@ IMAGES = [
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/North_wall_-_Derawar_Fort.jpg/1280px-North_wall_-_Derawar_Fort.jpg",
         "filename": "03_north_wall.jpg",
     },
-    # These images capture the outer perimeter bastions, specifically Bahawalpur I and II.
+    # --- Outer perimeter bastions (Bahawalpur I & II -- same session) ---
     {
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Derawar_Fort%2C_Bahawalpur_I.jpg/1280px-Derawar_Fort%2C_Bahawalpur_I.jpg",
         "filename": "04_bahawalpur_I.jpg",
@@ -88,7 +90,7 @@ IMAGES = [
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Derawar_Fort%2C_Bahawalpur_II.jpg/1280px-Derawar_Fort%2C_Bahawalpur_II.jpg",
         "filename": "05_bahawalpur_II.jpg",
     },
-    # These are general shots of the outer defensive wall.
+    # --- Outer wall shots ---
     {
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Derawar_Fort_outer_view.jpg/1280px-Derawar_Fort_outer_view.jpg",
         "filename": "06_outer_view.jpg",
@@ -97,7 +99,7 @@ IMAGES = [
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Defense_wall_of_Nawab%27s_Fort_-_Derawar_Fort.jpg/1280px-Defense_wall_of_Nawab%27s_Fort_-_Derawar_Fort.jpg",
         "filename": "07_defense_wall.jpg",
     },
-    # These images focus on the main entrance gate.
+    # --- Entrance gate ---
     {
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Derawar_Entrance_Gate.jpg/1280px-Derawar_Entrance_Gate.jpg",
         "filename": "08_entrance_gate.jpg",
@@ -106,7 +108,7 @@ IMAGES = [
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Derawar_Fort_View.jpg/1280px-Derawar_Fort_View.jpg",
         "filename": "09_fort_view.jpg",
     },
-    # These are exterior medium and wide-angle shots to provide broader context.
+    # --- Exterior medium/wide shots ---
     {
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Derawar_Fort_2.jpg/1280px-Derawar_Fort_2.jpg",
         "filename": "10_fort_2.jpg",
@@ -119,7 +121,7 @@ IMAGES = [
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Derawar_Fort_side_view.jpg/1280px-Derawar_Fort_side_view.jpg",
         "filename": "12_side_view.jpg",
     },
-    # These are original images where no higher resolution thumbnail is available.
+    # --- Small originals (no thumbnail larger than original) ---
     {
         "url":      "https://upload.wikimedia.org/wikipedia/commons/b/ba/Mighty_derawar_fort.jpg",
         "filename": "13_mighty_derawar.jpg",
@@ -144,7 +146,7 @@ IMAGES = [
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/View_of_Derawar_Fort_from_East.jpg/1280px-View_of_Derawar_Fort_from_East.jpg",
         "filename": "18_view_from_east.jpg",
     },
-    # This is an additional shot offering a different perspective of the fort.
+    # --- Extra shot: different perspective ---
     {
         "url":      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Derawar_Fort_by_M_Ali_Mir_01.jpg/1280px-Derawar_Fort_by_M_Ali_Mir_01.jpg",
         "filename": "19_m_ali_mir.jpg",
@@ -186,37 +188,31 @@ def run(cmd, label):
     return elapsed
 
 
-import socket
-import urllib.parse
-import ssl
-
-ssl._create_default_https_context = ssl._create_unverified_context
-
 def download_with_retry(url, dest_path, max_retries=5):
     """Download a URL to dest_path with exponential backoff retry on 429/5xx."""
     headers = {
         "User-Agent": "DerawarFort-3D-Pipeline/1.0 (heritage-preservation-research) Python/urllib"
     }
-    
-    parsed_url = urllib.parse.urlparse(url)
-    hostname = parsed_url.hostname
-    
-    try:
-        ip = socket.gethostbyname(hostname)
-        print(f"      [DNS] Resolved {hostname} to {ip} via normal DNS")
-    except Exception:
-        ip = resolve_via_doh(hostname)
-        print(f"      [DNS] Resolved {hostname} to {ip} via DoH fallback")
-        
-    new_url = parsed_url._replace(netloc=ip).geturl()
-    headers["Host"] = hostname
-    
     for attempt in range(1, max_retries + 1):
         try:
-            req = urllib.request.Request(new_url, headers=headers)
-            with urllib.request.urlopen(req, timeout=120) as resp, open(dest_path, "wb") as f:
-                shutil.copyfileobj(resp, f)
-            return True
+            req = urllib.request.Request(url, headers=headers)
+            try:
+                with urllib.request.urlopen(req, timeout=120) as resp, open(dest_path, "wb") as f:
+                    shutil.copyfileobj(resp, f)
+                return True
+            except urllib.error.URLError as url_exc:
+                if hasattr(url_exc, "reason") and isinstance(url_exc.reason, socket.gaierror):
+                    print("      DNS resolution failed, attempting DoH fallback...")
+                    ip = resolve_via_doh("upload.wikimedia.org")
+                    doh_url = url.replace("upload.wikimedia.org", ip)
+                    doh_headers = headers.copy()
+                    doh_headers["Host"] = "upload.wikimedia.org"
+                    doh_req = urllib.request.Request(doh_url, headers=doh_headers)
+                    with urllib.request.urlopen(doh_req, timeout=120) as resp, open(dest_path, "wb") as f:
+                        shutil.copyfileobj(resp, f)
+                    return True
+                else:
+                    raise url_exc
         except urllib.error.HTTPError as exc:
             if exc.code in (429, 503, 502, 500) and attempt < max_retries:
                 wait = 5.0 * (2 ** (attempt - 1))   # 5, 10, 20, 40 s
@@ -269,7 +265,7 @@ def download_images(dest_dir, images, inter_request_delay=5.0):
             if os.path.exists(local_path):
                 os.remove(local_path)
 
-        # We introduce a polite delay between download requests (defaulting to 5 seconds) to avoid rate-limiting.
+        # Polite delay between requests (5s default)
         if i < len(images) - 1:
             time.sleep(inter_request_delay)
 
@@ -399,15 +395,15 @@ def main():
         "--database_path",                  DB_PATH,
         "--image_path",                     IMAGES_RESIZED_DIR,
         "--FeatureExtraction.use_gpu",      "0",
-        # We limit the feature extraction to 2 threads because the default 12-thread execution causes out-of-memory errors on large CPU SIFT jobs.
+        # Limit to 2 threads: 12-thread default OOMs on large CPU SIFT jobs
         "--FeatureExtraction.num_threads",  "2",
-        # We cap the longest image dimension to 3200 pixels to reduce per-thread RAM usage during processing.
+        # Cap longest dimension to 3200px to reduce per-thread RAM usage
         "--FeatureExtraction.max_image_size",  "3200",
     ], "STEP 2 -- Feature extraction (CPU-only SIFT)")
 
     # -----------------------------------------------------------------------
     # STEP 3: Exhaustive matching (CPU-only)
-    # Note that the --SiftMatching.max_distance parameter is omitted because COLMAP version 4.1.0 does not support it.
+    # COLMAP 4.1.0 has no --SiftMatching.max_distance; omitted.
     # -----------------------------------------------------------------------
     run([
         COLMAP_EXE, "exhaustive_matcher",
@@ -429,13 +425,13 @@ def main():
         "--Mapper.init_min_num_inliers",     "30",
         "--Mapper.abs_pose_min_num_inliers", "6",
         "--Mapper.abs_pose_min_inlier_ratio", "0.1",
-        # We relax the initial triangulation angle threshold from the default of 16.0 degrees to 2.0 degrees.
+        # Relax initial triangulation angle threshold (default is 16.0 degrees)
         "--Mapper.init_min_tri_angle",       "2.0",
         "--Mapper.filter_max_reproj_error",   "8",
         "--Mapper.min_model_size",           "3",
     ], "STEP 4 -- Sparse reconstruction (mapper)")
 
-    # We search for and select the best sparse sub-model, which is the one with the highest number of registered images.
+    # Find the best (most images registered) sub-model
     sub_models = sorted(
         [d for d in os.listdir(SPARSE_DIR)
          if os.path.isdir(os.path.join(SPARSE_DIR, d))],
@@ -451,30 +447,9 @@ def main():
     num_registered = count_registered_images(best_model)
     num_points     = count_3d_points(best_model)
 
-# This function parses and checks the Mean Track Length (MTL) from the model analyzer output.
-def check_mtl(sparse_path):
-    result = subprocess.run(
-        ['colmap', 'model_analyzer', '--path', sparse_path],
-        capture_output=True,
-        text=True
-    )
-    output = result.stdout + result.stderr
-    # This regex has been verified against the standard COLMAP 3.6/3.7 output format for Mean Track Length.
-    match = re.search(r'Mean track length:\s*([\d.]+)', output)
-    if not match:
-        print('[MTL CHECK] Could not find Mean Track Length in output.')
-        return None
-    mtl = float(match.group(1))
-    if 3.60 <= mtl <= 4.20:
-        print(f'[MTL CHECK] PASS — Mean Track Length = {mtl} (within 3.60-4.20 threshold)')
-    else:
-        print(f'[MTL CHECK] WARN — Mean Track Length = {mtl} (outside 3.60-4.20 threshold, per RESEARCH.md)')
-    return mtl
-
     # -----------------------------------------------------------------------
     # STEP 5: Export to PLY
     # -----------------------------------------------------------------------
-    check_mtl(best_model)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     run([
         COLMAP_EXE, "model_converter",
