@@ -11,7 +11,7 @@ I (Hamza) designed and implemented `check_mtl()` to automate this metric extract
 - **Commit Hash:** `017959c9fdf5a49c3862d2273c57fa38e3976719`
 - **Timestamp:** `2026-07-28 01:51:00 +0500`
 - **Metric:** Literal WARN value of `2.13333`
-- **Evidence File:** Captured terminal output is available in `evidence/check_mtl_warn.txt`.
+- **Evidence File:** Captured terminal output is available in `evidence/check_mtl_warn.png`.
 
 ## Process
 The `check_mtl()` function executes immediately after the optimal sub-model is selected in `reconstruct.py`. It runs `colmap model_analyzer` and parses the output via regex. The pipeline requires an MTL threshold of 3.60 to 4.20 for a `PASS`. A value below 3.60 triggers a `WARN`. The actual metric returned was 2.13333, severely crossing the `WARN` threshold, indicating that more overlapping images are required to strengthen the sparse point cloud.
